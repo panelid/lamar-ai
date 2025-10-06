@@ -1,177 +1,77 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LLM Chat App</title>
-    <style>
-      :root {
-        --primary-color: #f6821f;
-        --primary-hover: #e67e22;
-        --light-bg: #f9fafb;
-        --border-color: #e5e7eb;
-        --text-color: #1f2937;
-        --text-light: #6b7280;
-        --user-msg-bg: #fff2e6;
-        --assistant-msg-bg: #f3f4f6;
-      }
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+    // TAMPILAN (UI HTML)
+    if (url.pathname === "/") {
+      return new Response(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Lamar.id - CV Builder AI</title>
+          <style>
+            body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+            .chat { background: white; width: 90%; max-width: 500px; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+            #chat-box { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+            input, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; width: 100%; }
+            button { background: #0078ff; color: white; border: none; margin-top: 6px; }
+          </style>
+        </head>
+        <body>
+          <div class="chat">
+            <h2>💼 Lamar.id - CV Builder AI</h2>
+            <div id="chat-box"></div>
+            <form id="chat-form">
+              <input id="chat-input" placeholder="Tulis pengalaman kerjamu..." />
+              <button>Kirim</button>
+            </form>
+          </div>
 
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
-          Cantarell, sans-serif;
-        line-height: 1.6;
-        color: var(--text-color);
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 1rem;
-      }
+          <script>
+          const form = document.querySelector("#chat-form");
+          const input = document.querySelector("#chat-input");
+          const box = document.querySelector("#chat-box");
 
-      header {
-        text-align: center;
-        margin-bottom: 2rem;
-        padding: 1rem 0;
-        border-bottom: 1px solid var(--border-color);
-      }
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+            box.innerHTML += "<div><b>Kamu:</b> " + text + "</div>";
+            input.value = "";
 
-      h1 {
-        font-size: 1.5rem;
-        color: var(--primary-color);
-      }
+            const res = await fetch("/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: "Anonim",
+                experience: text,
+                skills: "Menulis, Komunikasi"
+              })
+            });
 
-      .chat-container {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 200px);
-        min-height: 400px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        overflow: hidden;
-      }
+            const data = await res.json();
+            box.innerHTML += "<div><b>AI:</b> " + data.result + "</div>";
+            box.scrollTop = box.scrollHeight;
+          });
+          </script>
+        </body>
+        </html>
+      `, { headers: { "Content-Type": "text/html" } });
+    }
 
-      .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-        background-color: var(--light-bg);
-      }
+    // LOGIKA AI
+    if (url.pathname === "/generate" && request.method === "POST") {
+      const body = await request.json();
+      const prompt = `Tulis deskripsi CV profesional untuk ${body.name}.
+      Pengalaman: ${body.experience}.
+      Skill: ${body.skills}.`;
+      
+      const result = await env.AI.run("@cf/meta/llama-3-8b-instruct", { prompt });
+      return new Response(JSON.stringify({ result }), { headers: { "Content-Type": "application/json" } });
+    }
 
-      .message {
-        margin-bottom: 1rem;
-        padding: 0.75rem;
-        border-radius: 8px;
-        max-width: 80%;
-      }
-
-      .user-message {
-        background-color: var(--user-msg-bg);
-        align-self: flex-end;
-        margin-left: auto;
-      }
-
-      .assistant-message {
-        background-color: var(--assistant-msg-bg);
-        align-self: flex-start;
-      }
-
-      .message-input {
-        display: flex;
-        padding: 0.75rem;
-        border-top: 1px solid var(--border-color);
-        background-color: white;
-      }
-
-      #user-input {
-        flex: 1;
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        font-family: inherit;
-        resize: none;
-        min-height: 44px;
-      }
-
-      #send-button {
-        margin-left: 0.5rem;
-        padding: 0 1rem;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      }
-
-      #send-button:hover {
-        background-color: var(--primary-hover);
-      }
-
-      #send-button:disabled {
-        background-color: var(--text-light);
-        cursor: not-allowed;
-      }
-
-      .typing-indicator {
-        display: none;
-        margin-bottom: 1rem;
-        font-style: italic;
-        color: var(--text-light);
-      }
-
-      .typing-indicator.visible {
-        display: block;
-      }
-
-      footer {
-        margin-top: 1rem;
-        text-align: center;
-        font-size: 0.85rem;
-        color: var(--text-light);
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Cloudflare AI Chat</h1>
-      <p>Powered by Cloudflare Workers AI</p>
-    </header>
-
-    <div class="chat-container">
-      <div id="chat-messages" class="chat-messages">
-        <div class="message assistant-message">
-          <p>
-            Hello! I'm an LLM chat app powered by Cloudflare Workers AI. How can
-            I help you today?
-          </p>
-        </div>
-      </div>
-
-      <div class="typing-indicator" id="typing-indicator">
-        AI is thinking...
-      </div>
-
-      <div class="message-input">
-        <textarea
-          id="user-input"
-          placeholder="Type your message here..."
-          rows="1"
-          autofocus
-        ></textarea>
-        <button id="send-button">Send</button>
-      </div>
-    </div>
-
-    <footer>
-      <p>Cloudflare Workers AI Chat Template &copy; 2025</p>
-    </footer>
-
-    <!-- Chat app script -->
-    <script src="chat.js"></script>
-  </body>
-</html>
+    return new Response("404 Not Found", { status: 404 });
+  },
+};
