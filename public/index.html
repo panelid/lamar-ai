@@ -2,74 +2,131 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // TAMPILAN (UI HTML)
+    // 🖥️ HALAMAN UTAMA (HTML)
     if (url.pathname === "/") {
-      return new Response(`
-        <!DOCTYPE html>
-        <html lang="id">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Lamar.id - CV Builder AI</title>
-          <style>
-            body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-            .chat { background: white; width: 90%; max-width: 500px; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-            #chat-box { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-            input, button { padding: 10px; border-radius: 6px; border: 1px solid #ccc; width: 100%; }
-            button { background: #0078ff; color: white; border: none; margin-top: 6px; }
-          </style>
-        </head>
-        <body>
-          <div class="chat">
-            <h2>💼 Lamar.id - CV Builder AI</h2>
-            <div id="chat-box"></div>
-            <form id="chat-form">
-              <input id="chat-input" placeholder="Tulis pengalaman kerjamu..." />
-              <button>Kirim</button>
-            </form>
-          </div>
+      return new Response(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lamar.id - CV Builder AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    #chat-box {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+    input {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #0078ff;
+      color: white;
+      font-weight: bold;
+      width: 100%;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fcc;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat">
+    <h2>💼 Lamar.id - CV Builder AI</h2>
+    <div id="chat-box"></div>
+    <form id="chat-form">
+      <input id="chat-input" placeholder="Tulis pengalaman kerjamu di sini..." />
+      <button type="submit">Kirim</button>
+    </form>
+  </div>
 
-          <script>
-          const form = document.querySelector("#chat-form");
-          const input = document.querySelector("#chat-input");
-          const box = document.querySelector("#chat-box");
+  <script>
+    const form = document.querySelector("#chat-form");
+    const input = document.querySelector("#chat-input");
+    const box = document.querySelector("#chat-box");
 
-          form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const text = input.value.trim();
-            if (!text) return;
-            box.innerHTML += "<div><b>Kamu:</b> " + text + "</div>";
-            input.value = "";
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
 
-            const res = await fetch("/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: "Anonim",
-                experience: text,
-                skills: "Menulis, Komunikasi"
-              })
-            });
+      box.innerHTML += "<div><b>Kamu:</b> " + text + "</div>";
+      input.value = "";
 
-            const data = await res.json();
-            box.innerHTML += "<div><b>AI:</b> " + data.result + "</div>";
-            box.scrollTop = box.scrollHeight;
-          });
-          </script>
-        </body>
-        </html>
-      `, { headers: { "Content-Type": "text/html" } });
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Anonim",
+            experience: text,
+            skills: "Komunikasi, Kolaborasi"
+          })
+        });
+
+        const data = await res.json();
+        box.innerHTML += "<div><b>AI:</b> " + data.result + "</div>";
+      } catch (err) {
+        box.innerHTML += "<div style='color:red'><b>⚠️ Error:</b> " + err.message + "</div>";
+      }
+
+      box.scrollTop = box.scrollHeight;
+    });
+  </script>
+</body>
+</html>`, {
+        headers: { "Content-Type": "text/html; charset=UTF-8" },
+      });
     }
 
-    // LOGIKA AI
+    // 🧠 LOGIKA BACKEND (AI)
     if (url.pathname === "/generate" && request.method === "POST") {
       const body = await request.json();
-      const prompt = `Tulis deskripsi CV profesional untuk ${body.name}.
-      Pengalaman: ${body.experience}.
-      Skill: ${body.skills}.`;
-      
-      const result = await env.AI.run("@cf/meta/llama-3-8b-instruct", { prompt });
-      return new Response(JSON.stringify({ result }), { headers: { "Content-Type": "application/json" } });
+
+      const prompt = `Buatkan deskripsi CV profesional dalam bahasa Indonesia untuk seseorang bernama ${body.name}.
+      Pengalaman kerja: ${body.experience}.
+      Keahlian: ${body.skills}.
+      Gunakan gaya bahasa yang sopan dan ringkas.`;
+
+      const aiResponse = await env.AI.run("@cf/meta/llama-3-8b-instruct", { prompt });
+
+      return new Response(JSON.stringify({ result: aiResponse }), {
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     return new Response("404 Not Found", { status: 404 });
